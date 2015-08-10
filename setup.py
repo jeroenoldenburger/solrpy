@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 # bootstrap easy_install
 import ez_setup
 ez_setup.use_setuptools()

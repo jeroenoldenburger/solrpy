@@ -5,14 +5,15 @@ Test cases for the Python Solr client.
 
 Meant to be run against Solr 1.2+.
 """
+from __future__ import absolute_import
 
 # stdlib
-import cPickle
+import six.moves.cPickle
 import pickle
 import socket
 import datetime
 import unittest
-import httplib
+import six.moves.http_client
 from string import digits
 from random import choice
 from xml.dom.minidom import parseString
@@ -20,6 +21,7 @@ from xml.dom.minidom import parseString
 # solrpy
 import solr
 import solr.core
+from six.moves import range
 
 SOLR_PATH = "/solr/core0"
 SOLR_HOST = "localhost"
@@ -713,7 +715,7 @@ class TestQuerying(SolrConnectionTestCase):
         # queries also return score for each document.
 
         for result in results:
-            fields = result.keys()
+            fields = list(result.keys())
             fields.remove(field_to_return)
 
             # Now there should only a score field
@@ -1305,13 +1307,13 @@ class TestResponse(SolrConnectionTestCase):
         response = self.query(self.conn, q="id:" + id)
         # here we also check the type of the attribute
         expected_attrs = {
-            "numFound": long,
-            "start": long,
+            "numFound": int,
+            "start": int,
             "maxScore": float,
             "header": dict,
             }
 
-        for attr, attr_type in expected_attrs.items():
+        for attr, attr_type in list(expected_attrs.items()):
             self.assertTrue(hasattr(response, attr),
                 "Attribute %s not found in response. id:%s" % (attr, id))
 
@@ -1406,7 +1408,7 @@ class ThrowBadStatusLineExceptions(object):
     def __call__(self, *args, **kwargs):
         self.calls += 1
         if self.max is None or self.calls <= self.max:
-            raise httplib.BadStatusLine('Dummy status line exception')
+            raise six.moves.http_client.BadStatusLine('Dummy status line exception')
         return self.wrap(*args, **kwargs)
 
 
@@ -1422,7 +1424,7 @@ class TestRetries(SolrConnectionTestCase):
         and still raises the exception """
         t = ThrowBadStatusLineExceptions(self.conn)
 
-        self.assertRaises(httplib.BadStatusLine, self.query,
+        self.assertRaises(six.moves.http_client.BadStatusLine, self.query,
                           self.conn, "user_id:12345")
 
         self.assertEqual(t.calls, 4)

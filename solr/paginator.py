@@ -1,4 +1,6 @@
+from __future__ import absolute_import
 import math
+from six.moves import range
 
 class SolrPaginator:
     """
@@ -58,13 +60,13 @@ class SolrPaginator:
         if self.count == 0:
             return []
         # Add one because range is right-side exclusive
-        return range(1, self.num_pages + 1)
+        return list(range(1, self.num_pages + 1))
 
     def _fetch_page(self, start=0):
         """Retrieve a new result response from Solr."""
         # need to convert the keys to strings to pass them as parameters
         new_params = {}
-        for k, v in self.params.items():
+        for k, v in list(self.params.items()):
             new_params[str(k)] = v
 
         # get the new start index
@@ -76,10 +78,10 @@ class SolrPaginator:
         try:
             int(page_num)
         except:
-            raise 'PageNotAnInteger'
+            raise ValueError('PageNotAnInteger')
 
         if page_num not in self.page_range:
-            raise 'EmptyPage', 'That page does not exist.'
+            raise ValueError('EmptyPage. That page does not exist.')
 
         # Page 1 starts at 0; take one off before calculating
         start = (page_num - 1) * self.page_size
