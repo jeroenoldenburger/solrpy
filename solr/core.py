@@ -52,8 +52,8 @@ Only `url` is required,.
     ssl_key, ssl_cert -- If using client-side key files for
         SSL authentication,  these should be, respectively,
         your PEM key file and certificate file
-        
-    http_user, http_pass -- If given, include HTTP Basic authentication 
+
+    http_user, http_pass -- If given, include HTTP Basic authentication
         in all request headers.
 
 Once created, a connection object has the following public methods:
@@ -243,19 +243,19 @@ from __future__ import absolute_import
 import sys
 import socket
 import six.moves.http_client
-import urlparse
+import six.moves.urllib.parse
 import codecs
 import urllib
 import datetime
 import logging
-from StringIO import StringIO
+from six.moves import StringIO
 from xml.sax import make_parser
 from xml.sax.handler import ContentHandler
 from xml.sax.saxutils import escape, quoteattr
 from xml.dom.minidom import parseString
 import six
 
-__version__ = "0.9.6"
+__version__ = "0.9.8-RC1"
 
 __all__ = ['SolrException', 'Solr', 'SolrConnection',
            'Response', 'SearchHandler']
@@ -370,12 +370,12 @@ class Solr:
                 SSL authentication,  these should be, respectively,
                 your PEM key file and certificate file.
 
-            http_user, http_pass -- If given, include HTTP Basic authentication 
+            http_user, http_pass -- If given, include HTTP Basic authentication
                 in all request headers.
 
         """
 
-        self.scheme, self.host, self.path = urlparse.urlparse(url, 'http')[:3]
+        self.scheme, self.host, self.path = parse(url, 'http')[:3]
         self.url = url
 
         assert self.scheme in ('http','https')
@@ -422,14 +422,14 @@ class Solr:
         self.form_headers = {
             'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8'}
         self.form_headers.update(post_headers)
-        
+
         if http_user is not None and http_pass is not None:
             http_auth = http_user + ':' + http_pass
             http_auth = 'Basic ' + http_auth.encode('base64').strip()
             self.auth_headers = {'Authorization': http_auth}
         else:
             self.auth_headers = {}
-        
+
         if not self.persistent:
             self.form_headers['Connection'] = 'close'
 
