@@ -1,2 +1,5 @@
 *.pyc
 solrpy.egg-info
+venv3/
+solr-*
+nose-*

@@ -243,9 +243,8 @@ from __future__ import absolute_import
 import sys
 import socket
 import six.moves.http_client
-import six.moves.urllib.parse
+from six.moves import urllib
 import codecs
-import urllib
 import datetime
 import logging
 from six.moves import StringIO
@@ -375,7 +374,7 @@ class Solr:
 
         """
 
-        self.scheme, self.host, self.path = parse(url, 'http')[:3]
+        self.scheme, self.host, self.path = urllib.parse.urlparse(url, 'http')[:3]
         self.url = url
 
         assert self.scheme in ('http','https')
@@ -559,7 +558,7 @@ class Solr:
         # Detect old-style error response (HTTP response code
         # of 200 with a non-zero status).
         starts = data.startswith
-        if starts('<result status="') and not starts('<result status="0"'):
+        if starts(b'<result status="') and not starts(b'<result status="0"'):
             data = self.decoder(data)[0]
             parsed = parseString(data)
             status = parsed.documentElement.getAttribute('status')
@@ -799,6 +798,8 @@ class SearchHandler(object):
         params['wt'] = 'standard'
 
         xml = self.raw(**params)
+        if isinstance(xml,bytes):
+            xml = xml.decode('utf-8')
         return parse_query_response(StringIO(xml),  params, self)
 
     def raw(self, **params):
@@ -816,7 +817,7 @@ class SearchHandler(object):
                 query.extend([(key, strify(v)) for v in value])
             else:
                 query.append((key, strify(value)))
-        request = urllib.urlencode(query, doseq=True)
+        request = urllib.parse.urlencode(query, doseq=True)
         conn = self.conn
         if conn.debug:
             logging.info("solrpy request: %s" % request)
@@ -1164,10 +1165,10 @@ def qs_from_items(query):
     if query:
         sep = '?'
         for k, v in list(query.items()):
-            k = urllib.quote(k)
+            k = urllib.parse.quote(k)
             if isinstance(v, six.string_types):
                 v = [v]
             for s in v:
-                qs += "%s%s=%s" % (sep, k, urllib.quote_plus(s))
+                qs += "%s%s=%s" % (sep, k, urllib.parse.quote_plus(s))
                 sep = '&'
     return qs

@@ -6,9 +6,18 @@ Test cases for the Python Solr client.
 Meant to be run against Solr 1.2+.
 """
 from __future__ import absolute_import
+from __future__ import unicode_literals
+
+import sys
+if sys.version_info < (3,):
+    text_type = unicode
+    binary_type = str
+else:
+    text_type = str
+    binary_type = bytes
 
 # stdlib
-import six.moves.cPickle
+from six.moves import cPickle
 import pickle
 import socket
 import datetime
@@ -30,6 +39,18 @@ SOLR_PORT_HTTPS = "8943"
 SOLR_HTTP = "http://" + SOLR_HOST + ":" + SOLR_PORT_HTTP  + SOLR_PATH
 SOLR_HTTPS = "https://" + SOLR_HOST + ":" + SOLR_PORT_HTTPS + SOLR_PATH
 
+
+def get_utf8_string(data):
+    if isinstance(data, binary_type):
+        data = data.decode('utf-8')
+    if sys.version_info < (3,):
+        data = unicode(data)
+    return data
+
+def get_utf8_bytes(data):
+    if isinstance(data, text_type):
+        data = data.encode('utf-8')
+    return data
 
 def get_rand_string():
     return "".join(choice(digits) for x in range(12))
@@ -147,7 +168,7 @@ class RequestTracking(SolrConnectionTestCase):
         self.fail("URL path doesn't start with expected prefix: ")
 
     def postbody(self):
-        return self._update[0][2]
+        return get_utf8_string(self._update[0][2])
 
 
 class TestHTTPConnection(SolrConnectionTestCase):
@@ -345,7 +366,8 @@ class TestAddingDocuments(SolrConnectionTestCase):
         """ Check whether Unicode data actually works for single document.
         """
         # "bile" in Polish (UTF-8).
-        data = "\xc5\xbc\xc3\xb3\xc5\x82\xc4\x87".decode("utf-8")
+        # data = get_utf8_string("\xc5\xbc\xc3\xb3\xc5\x82\xc4\x87")
+        data = u"\xc5\xbc\xc3\xb3\xc5\x82\xc4\x87"
         doc = get_rand_userdoc(data=data)
 
         self.add(**doc)
@@ -376,8 +398,8 @@ class TestAddingDocuments(SolrConnectionTestCase):
         documents.
         """
         # Some Polish characters (UTF-8)
-        chars = ("\xc4\x99\xc3\xb3\xc4\x85\xc5\x9b\xc5\x82"
-                 "\xc4\x98\xc3\x93\xc4\x84\xc5\x9a\xc5\x81").decode("utf-8")
+        chars = (b"\xc4\x99\xc3\xb3\xc4\x85\xc5\x9b\xc5\x82"
+                 b"\xc4\x98\xc3\x93\xc4\x84\xc5\x9a\xc5\x81").decode("utf-8")
 
         documents = [get_rand_userdoc(data=char) for char in chars]
 
@@ -985,7 +1007,7 @@ class TestQuerying(SolrConnectionTestCase):
                 self.add(id=get_rand_string(), user_id=user_id, data=datum)
         self.conn.commit()
 
-        results = self.query(self.conn, 
+        results = self.query(self.conn,
             q="user_id:%s OR user_id:%s" % (user_ids[0], user_ids[1]),
             sort=["user_id asc", "data_sort desc"]).results
 
@@ -1142,17 +1164,17 @@ class TestQuerying(SolrConnectionTestCase):
 class EmptyResponse(object):
 
     _empty_results = '''\
-<response> 
-<lst name="responseHeader"> 
- <int name="status">0</int> 
- <int name="QTime">2</int> 
- <lst name="params"> 
-  <str name="q">keyword:ttestdocument</str> 
-  <str name="wt">standard</str> 
- </lst> 
-</lst> 
-<result name="response" numFound="0" start="0"/> 
-</response> 
+<response>
+<lst name="responseHeader">
+ <int name="status">0</int>
+ <int name="QTime">2</int>
+ <lst name="params">
+  <str name="q">keyword:ttestdocument</str>
+  <str name="wt">standard</str>
+ </lst>
+</lst>
+<result name="response" numFound="0" start="0"/>
+</response>
 '''
 
     _headers = {
@@ -1386,7 +1408,9 @@ class TestPaginator(SolrConnectionTestCase):
 
     def test_unicode_query(self):
         """ Test for unicode support in subsequent paginator queries """
-        chinese_data = '\xe6\xb3\xb0\xe5\x9b\xbd'.decode('utf-8')
+        chinese_data = '\xe6\xb3\xb0\xe5\x9b\xbd'
+        if isinstance(chinese_data, binary_type):
+            chinese_data = chinese_data.decode('utf-8')
         self.conn.add(id=100, data=chinese_data)
         self.conn.commit()
         result = self.query(self.conn, chinese_data.encode('utf-8'))
@@ -1780,35 +1804,35 @@ class SolrExceptionHttpStatusPickleTestCase(unittest.TestCase):
 
     def test_legacy_cPickle_0(self):
         self._test_unpickle(
-            "csolr.core\nSolrException\np1\n(tRp2\n(dp3\nS'body'\np4\nNs"
-            "S'reason'\np5\nS'Not Found'\np6\nsS'httpcode'\np7\nI404\nsb.")
+            b"csolr.core\nSolrException\np1\n(tRp2\n(dp3\nS'body'\np4\nNs"
+            b"S'reason'\np5\nS'Not Found'\np6\nsS'httpcode'\np7\nI404\nsb.")
 
     def test_legacy_cPickle_1(self):
         self._test_unpickle(
-            'csolr.core\nSolrException\nq\x01)Rq\x02}q\x03(U\x04bodyq\x04NU'
-            '\x06reasonq\x05U\tNot Foundq\x06U\x08httpcodeq\x07M\x94\x01ub.')
+            b'csolr.core\nSolrException\nq\x01)Rq\x02}q\x03(U\x04bodyq\x04NU'
+            b'\x06reasonq\x05U\tNot Foundq\x06U\x08httpcodeq\x07M\x94\x01ub.')
 
     def test_legacy_cPickle_2(self):
         self._test_unpickle(
-            '\x80\x02csolr.core\nSolrException\nq\x01)Rq\x02}q\x03(U\x04body'
-            'q\x04NU\x06reasonq\x05U\tNot Foundq\x06U\x08httpcodeq\x07M\x94'
-            '\x01ub.')
+            b'\x80\x02csolr.core\nSolrException\nq\x01)Rq\x02}q\x03(U\x04body'
+            b'q\x04NU\x06reasonq\x05U\tNot Foundq\x06U\x08httpcodeq\x07M\x94'
+            b'\x01ub.')
 
     def test_legacy_pickle_0(self):
         self._test_unpickle(
-            "csolr.core\nSolrException\np0\n(tRp1\n(dp2\nS'body'\np3\nNs"
-            "S'reason'\np4\nS'Not Found'\np5\nsS'httpcode'\np6\nI404\nsb.")
+            b"csolr.core\nSolrException\np0\n(tRp1\n(dp2\nS'body'\np3\nNs"
+            b"S'reason'\np4\nS'Not Found'\np5\nsS'httpcode'\np6\nI404\nsb.")
 
     def test_legacy_pickle_1(self):
         self._test_unpickle(
-            'csolr.core\nSolrException\nq\x00)Rq\x01}q\x02(U\x04bodyq\x03NU'
-            '\x06reasonq\x04U\tNot Foundq\x05U\x08httpcodeq\x06M\x94\x01ub.')
+            b'csolr.core\nSolrException\nq\x00)Rq\x01}q\x02(U\x04bodyq\x03NU'
+            b'\x06reasonq\x04U\tNot Foundq\x05U\x08httpcodeq\x06M\x94\x01ub.')
 
     def test_legacy_pickle_2(self):
         self._test_unpickle(
-            '\x80\x02csolr.core\nSolrException\nq\x00)Rq\x01}q\x02(U\x04body'
-            'q\x03NU\x06reasonq\x04U\tNot Foundq\x05U\x08httpcodeq\x06M\x94'
-            '\x01ub.')
+            b'\x80\x02csolr.core\nSolrException\nq\x00)Rq\x01}q\x02(U\x04body'
+            b'q\x03NU\x06reasonq\x04U\tNot Foundq\x05U\x08httpcodeq\x06M\x94'
+            b'\x01ub.')
 
     def _test_unpickle(self, s):
         loaded = self.module.loads(s)
@@ -1830,39 +1854,39 @@ class SolrExceptionSimpleMessagePickleTestCase(
 
     def test_legacy_cPickle_0(self):
         self._test_unpickle(
-            "csolr.core\nSolrException\np1\n(tRp2\n(dp3\nS'body'\np4\nNs"
-            "S'reason'\np5\nNsS'httpcode'\np6\n"
-            "S'Simple message, not HTTP status'\np7\nsb.")
+            b"csolr.core\nSolrException\np1\n(tRp2\n(dp3\nS'body'\np4\nNs"
+            b"S'reason'\np5\nNsS'httpcode'\np6\n"
+            b"S'Simple message, not HTTP status'\np7\nsb.")
 
     def test_legacy_cPickle_1(self):
         self._test_unpickle(
-            'csolr.core\nSolrException\nq\x01)Rq\x02}q\x03(U\x04bodyq\x04NU'
-            '\x06reasonq\x05NU\x08httpcodeq\x06U'
-            '\x1fSimple message, not HTTP statusq\x07ub.')
+            b'csolr.core\nSolrException\nq\x01)Rq\x02}q\x03(U\x04bodyq\x04NU'
+            b'\x06reasonq\x05NU\x08httpcodeq\x06U'
+            b'\x1fSimple message, not HTTP statusq\x07ub.')
 
     def test_legacy_cPickle_2(self):
         self._test_unpickle(
-            '\x80\x02csolr.core\nSolrException\nq\x01)Rq\x02}q\x03(U\x04body'
-            'q\x04NU\x06reasonq\x05NU\x08httpcodeq\x06U'
-            '\x1fSimple message, not HTTP statusq\x07ub.')
+            b'\x80\x02csolr.core\nSolrException\nq\x01)Rq\x02}q\x03(U\x04body'
+            b'q\x04NU\x06reasonq\x05NU\x08httpcodeq\x06U'
+            b'\x1fSimple message, not HTTP statusq\x07ub.')
 
     def test_legacy_pickle_0(self):
         self._test_unpickle(
-            "csolr.core\nSolrException\np0\n(tRp1\n(dp2\nS'body'\np3\nNs"
-            "S'reason'\np4\nNsS'httpcode'\np5\n"
-            "S'Simple message, not HTTP status'\np6\nsb.")
+            b"csolr.core\nSolrException\np0\n(tRp1\n(dp2\nS'body'\np3\nNs"
+            b"S'reason'\np4\nNsS'httpcode'\np5\n"
+            b"S'Simple message, not HTTP status'\np6\nsb.")
 
     def test_legacy_pickle_1(self):
         self._test_unpickle(
-            'csolr.core\nSolrException\nq\x00)Rq\x01}q\x02(U\x04bodyq\x03NU'
-            '\x06reasonq\x04NU\x08httpcodeq\x05U'
-            '\x1fSimple message, not HTTP statusq\x06ub.')
+            b'csolr.core\nSolrException\nq\x00)Rq\x01}q\x02(U\x04bodyq\x03NU'
+            b'\x06reasonq\x04NU\x08httpcodeq\x05U'
+            b'\x1fSimple message, not HTTP statusq\x06ub.')
 
     def test_legacy_pickle_2(self):
         self._test_unpickle(
-            '\x80\x02csolr.core\nSolrException\nq\x00)Rq\x01}q\x02(U\x04body'
-            'q\x03NU\x06reasonq\x04NU\x08httpcodeq\x05U'
-            '\x1fSimple message, not HTTP statusq\x06ub.')
+            b'\x80\x02csolr.core\nSolrException\nq\x00)Rq\x01}q\x02(U\x04body'
+            b'q\x03NU\x06reasonq\x04NU\x08httpcodeq\x05U'
+            b'\x1fSimple message, not HTTP statusq\x06ub.')
 
 
 class SolrExceptionHttpStatusCPickleTestCase(
